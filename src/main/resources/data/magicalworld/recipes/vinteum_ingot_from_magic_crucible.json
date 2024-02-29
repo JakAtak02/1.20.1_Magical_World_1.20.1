@@ -1,0 +1,12 @@
+{
+  "type": "magicalworld:magic_crucible",
+  "ingredients": [
+    {
+      "item": "minecraft:iron_ingot"
+    }
+  ],
+  "output": {
+    "count": 1,
+    "item": "magicalworld:vinteum_ingot"
+  }
+}

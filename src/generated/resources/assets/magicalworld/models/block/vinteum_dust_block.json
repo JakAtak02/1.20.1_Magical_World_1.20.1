@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "magicalworld:block/vinteum_dust_block"
+  }
+}

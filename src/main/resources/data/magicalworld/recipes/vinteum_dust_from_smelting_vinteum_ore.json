@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:smelting",
+  "category": "blocks",
+  "cookingtime": 200,
+  "experience": 0.7,
+  "group": "vinteum",
+  "ingredient": {
+    "item": "magicalworld:vinteum_ore_block"
+  },
+  "result": "magicalworld:vinteum_dust"
+}
