@@ -9,7 +9,10 @@ import net.jakatak.magicalworld.item.ModItems;
 import net.jakatak.magicalworld.recipe.ModRecipes;
 import net.jakatak.magicalworld.screen.MagicCrucibleBlockScreen;
 import net.jakatak.magicalworld.screen.ModMenuTypes;
+import net.jakatak.magicalworld.screen.PedestalBlockScreen;
 import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
@@ -66,6 +69,8 @@ public class MagicalWorld {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
             MenuScreens.register(ModMenuTypes.MAGIC_CRUCIBLE_BLOCK_MENU.get(), MagicCrucibleBlockScreen::new);
+            MenuScreens.register(ModMenuTypes.PEDESTAL_BLOCK_MENU.get(), PedestalBlockScreen::new);
+
         }
     }
 }

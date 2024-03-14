@@ -1,13 +1,18 @@
 package net.jakatak.magicalworld.block.entitty;
 
-import net.jakatak.magicalworld.item.ModItems;
+import net.jakatak.magicalworld.MagicalWorld;
+import net.jakatak.magicalworld.block.ModBlocks;
 import net.jakatak.magicalworld.recipe.MagicCrucibleRecipe;
 import net.jakatak.magicalworld.screen.MagicCrucibleBlockMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.Container;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.Containers;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
@@ -18,41 +23,85 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.energy.IEnergyStorage;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.capability.templates.FluidTank;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Map;
 import java.util.Optional;
 
 public class MagicCrucibleBlockEntity extends BlockEntity implements MenuProvider {
+    private final ItemStackHandler itemHandler = new ItemStackHandler(4) {
+        @Override
+        protected void onContentsChanged(int slot) {
+            setChanged();
+        }
 
-   private final ItemStackHandler itemHandler = new ItemStackHandler(2);
+        @Override
+        public boolean isItemValid(int slot, @NotNull ItemStack stack) {
+            return switch (slot) {
+                case 0 -> true;
+                case 1 -> true;
+                case 2 -> false;
+                case 3 -> stack.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).isPresent();
+                default -> super.isItemValid(slot, stack);
+            };
+        }
+    };
 
-   private static int INPUT_SLOT_LEFT = 0;
+    private static final int INPUT_SLOT_LEFT = 0;
+    private static final int INPUT_SLOT_RIGHT = 1;
+    private static final int FLUID_INPUT_SLOT = 3;
+    private static final int OUTPUT_SLOT = 2;
 
-   //private static  int INPUT_SLOT_RIGHT = 1;
 
-   private static int OUTPUT_SLOT = 1;
-
-   private LazyOptional<IItemHandler> lazyItemHandler = LazyOptional.empty();
+    private LazyOptional<IItemHandler> lazyItemHandler = LazyOptional.empty();
+    private LazyOptional<IFluidHandler> lazyFluidHandler = LazyOptional.empty();
 
     protected final ContainerData data;
     private int progress = 0;
     private int maxProgress = 78;
+    private final int DEFAULT_MAX_PROGRESS = 78;
+    private FluidStack neededFluidStack = FluidStack.EMPTY;
+
+    private final FluidTank FLUID_TANK = createFluidTank();
+
+    private FluidTank createFluidTank() {
+        return new FluidTank(1000) {
+            @Override
+            protected void onContentsChanged() {
+                setChanged();
+                if(!level.isClientSide()) {
+                    level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 4);
+                }
+            }
+
+            @Override
+            public boolean isFluidValid(FluidStack stack) {
+                return true;
+            }
+        };
+    }
+
 
     public MagicCrucibleBlockEntity(BlockPos pPos, BlockState pBlockState) {
         super(ModBlockEntities.MAGIC_CRUCIBLE_BLOCK_BE.get(), pPos, pBlockState);
         this.data = new ContainerData() {
             @Override
             public int get(int pIndex) {
-                return switch (pIndex){
+                return switch (pIndex) {
                     case 0 -> MagicCrucibleBlockEntity.this.progress;
                     case 1 -> MagicCrucibleBlockEntity.this.maxProgress;
                     default -> 0;
@@ -65,49 +114,33 @@ public class MagicCrucibleBlockEntity extends BlockEntity implements MenuProvide
                     case 0 -> MagicCrucibleBlockEntity.this.progress = pValue;
                     case 1 -> MagicCrucibleBlockEntity.this.maxProgress = pValue;
                 }
-
             }
 
             @Override
             public int getCount() {
-                return 2;
+                return 4;
             }
         };
     }
 
-    @Override
-    public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
 
-        if(cap == ForgeCapabilities.ITEM_HANDLER) {
-            return lazyItemHandler.cast();
+    public FluidStack getFluid() {
+        return FLUID_TANK.getFluid();
+    }
+
+    public void drops() {
+        SimpleContainer inventory = new SimpleContainer(itemHandler.getSlots());
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            inventory.setItem(i, itemHandler.getStackInSlot(i));
         }
 
-        return super.getCapability(cap, side);
+        Containers.dropContents(this.level, this.worldPosition, inventory);
     }
-
-    @Override
-    public void onLoad() {
-        super.onLoad();
-        lazyItemHandler = LazyOptional.of(()-> itemHandler);
-    }
-
-    @Override
-    public void invalidateCaps() {
-        super.invalidateCaps();
-    }
-
-        public void drops() {
-            SimpleContainer inventory = new SimpleContainer(itemHandler.getSlots());
-            for(int i = 0; i < itemHandler.getSlots(); i++){
-                inventory.setItem(i, itemHandler.getStackInSlot(i));
-            }
-            Containers.dropContents(this.level,this.worldPosition,inventory);
-        }
 
 
     @Override
     public Component getDisplayName() {
-        return Component.translatable("block.magicalworld.magic_crucible_block");
+        return Component.literal("Magic Crucible");
     }
 
     @Nullable
@@ -117,9 +150,43 @@ public class MagicCrucibleBlockEntity extends BlockEntity implements MenuProvide
     }
 
     @Override
+    public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
+        if(cap == ForgeCapabilities.FLUID_HANDLER) {
+            return lazyFluidHandler.cast();
+        }
+
+        if(cap == ForgeCapabilities.ITEM_HANDLER) {
+            if(side == null) {
+                return lazyItemHandler.cast();
+            }
+
+        }
+
+        return super.getCapability(cap, side);
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        lazyItemHandler = LazyOptional.of(() -> itemHandler);
+        lazyFluidHandler = LazyOptional.of(() -> FLUID_TANK);
+    }
+
+    @Override
+    public void invalidateCaps() {
+        super.invalidateCaps();
+        lazyItemHandler.invalidate();
+        lazyFluidHandler.invalidate();
+    }
+
+    @Override
     protected void saveAdditional(CompoundTag pTag) {
-        pTag.put("inventory",itemHandler.serializeNBT());
-        pTag.putInt("magic_crucible_block.progress",progress);
+        pTag.put("inventory", itemHandler.serializeNBT());
+        pTag.putInt("magic_crucible.progress", progress);
+        pTag.putInt("magic_crucible.max_progress", maxProgress);
+        neededFluidStack.writeToNBT(pTag);
+        pTag = FLUID_TANK.writeToNBT(pTag);
+
         super.saveAdditional(pTag);
     }
 
@@ -127,17 +194,23 @@ public class MagicCrucibleBlockEntity extends BlockEntity implements MenuProvide
     public void load(CompoundTag pTag) {
         super.load(pTag);
         itemHandler.deserializeNBT(pTag.getCompound("inventory"));
-        progress = pTag.getInt("magic_crucible_block.progress");
+        progress = pTag.getInt("magic_crucible.progress");
+        maxProgress = pTag.getInt("magic_crucible.max_progress");
+        neededFluidStack = FluidStack.loadFluidStackFromNBT(pTag);
+        FLUID_TANK.readFromNBT(pTag);
 
     }
 
-    public void tick(Level pLevel, BlockPos pPos, BlockState pState) {
-        if(hasRecipe()) {
-            increaseCraftingProgress();
-            setChanged(pLevel,pPos,pState);
+    public void tick(Level level, BlockPos pPos, BlockState pState) {
+        fillUpOnFluid();
 
-            if(hasProgressFinished()){
+        if (isOutputSlotEmptyOrReceivable() && hasRecipe(level,pPos,pState)) {
+            increaseCraftingProcess();
+            setChanged(level, pPos, pState);
+
+            if (hasProgressFinished()) {
                 craftItem();
+                extractFluid();
                 resetProgress();
             }
         } else {
@@ -145,36 +218,103 @@ public class MagicCrucibleBlockEntity extends BlockEntity implements MenuProvide
         }
     }
 
-    private void resetProgress() {
-        progress = 0;
+    private void extractFluid() {
+        this.FLUID_TANK.drain(neededFluidStack.getAmount(), IFluidHandler.FluidAction.EXECUTE);
     }
+
+    private void fillUpOnFluid() {
+        if(hasFluidSourceInSlot(FLUID_INPUT_SLOT)) {
+            transferItemFluidToTank(FLUID_INPUT_SLOT);
+        }
+    }
+
+    private void transferItemFluidToTank(int fluidInputSlot) {
+        this.itemHandler.getStackInSlot(fluidInputSlot).getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).ifPresent(iFluidHandlerItem -> {
+            int drainAmount = Math.min(this.FLUID_TANK.getSpace(), 1000);
+
+            FluidStack stack = iFluidHandlerItem.drain(drainAmount, IFluidHandler.FluidAction.SIMULATE);
+            if (stack.getFluid() == Fluids.WATER){
+                stack = iFluidHandlerItem.drain(drainAmount,IFluidHandler.FluidAction.EXECUTE);
+                fillTankWithFluid(stack,iFluidHandlerItem.getContainer());
+            }
+        });
+    }
+            //potential problem
+    private void fillTankWithFluid(FluidStack stack, ItemStack container) {
+        this.FLUID_TANK.fill(new FluidStack(stack.getFluid(), stack.getAmount()), IFluidHandler.FluidAction.EXECUTE);
+        this.itemHandler.extractItem(FLUID_INPUT_SLOT, 1, false);
+        this.itemHandler.insertItem(FLUID_INPUT_SLOT,container , false);
+
+
+    }
+
+    private boolean hasFluidSourceInSlot(int fluidInputSlot) {
+        return this.itemHandler.getStackInSlot(fluidInputSlot).getCount() > 0 &&
+                this.itemHandler.getStackInSlot(fluidInputSlot).getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).isPresent();
+
+
+
+    }
+
 
     private void craftItem() {
         Optional<MagicCrucibleRecipe> recipe = getCurrentRecipe();
-        ItemStack result = recipe.get().getResultItem(null);
+        ItemStack resultItem = recipe.get().getResultItem(getLevel().registryAccess());
 
         this.itemHandler.extractItem(INPUT_SLOT_LEFT, 1, false);
+        this.itemHandler.extractItem(INPUT_SLOT_RIGHT, 1, false);
 
-        this.itemHandler.setStackInSlot(OUTPUT_SLOT, new ItemStack(result.getItem(),
-                this.itemHandler.getStackInSlot(OUTPUT_SLOT).getCount() + result.getCount()));
+        this.itemHandler.setStackInSlot(OUTPUT_SLOT, new ItemStack(resultItem.getItem(),
+                this.itemHandler.getStackInSlot(OUTPUT_SLOT).getCount() + resultItem.getCount()));
     }
 
+    private void resetProgress() {
+        this.progress = 0;
+    }
 
+    private boolean hasProgressFinished() {
+        return this.progress >= this.maxProgress;
+    }
 
-    private boolean hasRecipe() {
+    private void increaseCraftingProcess() {
+        this.progress++;
+    }
+
+    private boolean hasRecipe(Level level, BlockPos pPos, BlockState pState) {
         Optional<MagicCrucibleRecipe> recipe = getCurrentRecipe();
-
-        if(recipe.isEmpty()) {
+        if (recipe.isEmpty()) {
             return false;
         }
-        ItemStack result = recipe.get().getResultItem(getLevel().registryAccess());
 
-        return canInsertAmountIntoOutputSlot(result.getCount()) && canInsertItemIntoOutputSlot(result.getItem());
+        BlockPos newPos = pPos.below();
+        BlockState blockBelow = level.getBlockState(newPos);
+        if (!blockBelow.is(Blocks.CAMPFIRE)
+                && !blockBelow.is(Blocks.FIRE)
+                && !blockBelow.is(Blocks.SOUL_FIRE)
+                && !blockBelow.is(Blocks.SOUL_CAMPFIRE)
+                && !blockBelow.is(ModBlocks.NITOR_BLOCK.get())
+                && !blockBelow.is(ModBlocks.SOUL_NITOR_BLOCK.get())
+
+        ) return false;
+
+
+        maxProgress = recipe.get().getCraftTime();
+        neededFluidStack = recipe.get().getFluidStack();
+
+        ItemStack resultItem = recipe.get().getResultItem(getLevel().registryAccess());
+
+        return canInsertAmountIntoOutputSlot(resultItem.getCount())
+                && canInsertItemIntoOutputSlot(resultItem.getItem())
+                && hasEnoughFluidToCraft();
+    }
+
+    private boolean hasEnoughFluidToCraft() {
+        return this.FLUID_TANK.getFluidAmount() >= neededFluidStack.getAmount();
     }
 
     private Optional<MagicCrucibleRecipe> getCurrentRecipe() {
         SimpleContainer inventory = new SimpleContainer(this.itemHandler.getSlots());
-        for(int i = 0; i < itemHandler.getSlots(); i++) {
+        for(int i = 0; i < this.itemHandler.getSlots(); i++) {
             inventory.setItem(i, this.itemHandler.getStackInSlot(i));
         }
 
@@ -186,17 +326,31 @@ public class MagicCrucibleBlockEntity extends BlockEntity implements MenuProvide
     }
 
     private boolean canInsertAmountIntoOutputSlot(int count) {
-        return this.itemHandler.getStackInSlot(OUTPUT_SLOT).getCount() + count <= this.itemHandler.getStackInSlot(OUTPUT_SLOT).getMaxStackSize();
+        return this.itemHandler.getStackInSlot(OUTPUT_SLOT).getMaxStackSize() >=
+                this.itemHandler.getStackInSlot(OUTPUT_SLOT).getCount() + count;
     }
 
-    private boolean hasProgressFinished() {
-
-        return progress >= maxProgress;
+    private boolean isOutputSlotEmptyOrReceivable() {
+        return this.itemHandler.getStackInSlot(OUTPUT_SLOT).isEmpty() ||
+                this.itemHandler.getStackInSlot(OUTPUT_SLOT).getCount() < this.itemHandler.getStackInSlot(OUTPUT_SLOT).getMaxStackSize();
     }
 
 
-    private void increaseCraftingProgress() {
-        progress++;
+    @Nullable
+    @Override
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
     }
+
+    @Override
+    public CompoundTag getUpdateTag() {
+        return saveWithoutMetadata();
+    }
+
+    @Override
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt) {
+        super.onDataPacket(net, pkt);
+    }
+
 
 }

@@ -20,8 +20,8 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 
-public class MagicalRodItem extends Item {
-    public MagicalRodItem(Properties properties) {
+public class WhiteRuneChalkItem extends Item {
+    public WhiteRuneChalkItem(Properties properties) {
         super(properties);
     }
     @Override
@@ -32,13 +32,13 @@ public class MagicalRodItem extends Item {
         BlockPos pos = pContext.getClickedPos();
         Player player0 = pContext.getPlayer();
 
-        if (!world.isClientSide && player0.isShiftKeyDown()) {
+        if (!world.isClientSide && !player0.isShiftKeyDown()) {
 
-               if (state.is(Blocks.CAULDRON)) {
-                world.setBlock(positionClicked, ModBlocks.MAGIC_CRUCIBLE_BLOCK.get().defaultBlockState(), 3);
+            if (state.is(ModBlocks.BLANK_RUNE_STONE.get())) {
+                world.setBlock(positionClicked, ModBlocks.WHITE_RUNE_STONE.get().defaultBlockState(), 3);
                 if (world instanceof ServerLevel serverWorld) {
-                    serverWorld.sendParticles(ParticleTypes.ENCHANTED_HIT, positionClicked.getX() + 0.5, positionClicked.getY() + 1, positionClicked.getZ() + 0.5, 10, 0.25, 0.25, 0.25, 0.0);
-                    world.playSound(null, pos, SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.BLOCKS, 1.0F, 1.0F);
+                    serverWorld.sendParticles(ParticleTypes.CLOUD, positionClicked.getX() + 0.5, positionClicked.getY() + 1, positionClicked.getZ() + 0.5, 10, 0.25, 0.25, 0.25, 0.0);
+                    world.playSound(null, pos, SoundEvents.SAND_STEP, SoundSource.BLOCKS, 1.0F, 1.0F);
                 }
 
 
@@ -58,6 +58,3 @@ public class MagicalRodItem extends Item {
 
 
 }
-
-
-

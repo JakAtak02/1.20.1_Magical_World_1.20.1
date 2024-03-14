@@ -1,4 +1,4 @@
-package net.jakatak.magicalworld.screen;
+package net.jakatak.magicalworld.screen.renderer;
 
 import com.google.common.base.Preconditions;
 import com.mojang.blaze3d.systems.RenderSystem;

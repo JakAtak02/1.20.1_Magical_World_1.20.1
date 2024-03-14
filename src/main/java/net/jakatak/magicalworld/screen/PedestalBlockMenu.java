@@ -1,6 +1,7 @@
 package net.jakatak.magicalworld.screen;
+
 import net.jakatak.magicalworld.block.ModBlocks;
-import net.jakatak.magicalworld.block.entitty.MagicCrucibleBlockEntity;
+import net.jakatak.magicalworld.block.entitty.PedestalBlockEntity;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -11,19 +12,19 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.items.SlotItemHandler;
 
-public class MagicCrucibleBlockMenu extends AbstractContainerMenu {
-    public final MagicCrucibleBlockEntity blockEntity;
+public class PedestalBlockMenu extends AbstractContainerMenu {
+    public final PedestalBlockEntity blockEntity;
     private final Level level;
     private final ContainerData data;
 
-    public MagicCrucibleBlockMenu(int pContainerId, Inventory inv, FriendlyByteBuf extraData) {
-        this(pContainerId, inv, inv.player.level().getBlockEntity(extraData.readBlockPos()), new SimpleContainerData(4));
+    public PedestalBlockMenu(int pContainerId, Inventory inv, FriendlyByteBuf extraData) {
+        this(pContainerId, inv, inv.player.level().getBlockEntity(extraData.readBlockPos()), new SimpleContainerData(2));
     }
 
-    public MagicCrucibleBlockMenu(int pContainerId, Inventory inv, BlockEntity entity, ContainerData data) {
-        super(ModMenuTypes.MAGIC_CRUCIBLE_BLOCK_MENU.get(), pContainerId);
-        checkContainerSize(inv, 4);
-        blockEntity = ((MagicCrucibleBlockEntity) entity);
+    public PedestalBlockMenu(int pContainerId, Inventory inv, BlockEntity entity, ContainerData data) {
+        super(ModMenuTypes.PEDESTAL_BLOCK_MENU.get(), pContainerId);
+        checkContainerSize(inv, 1);
+        blockEntity = ((PedestalBlockEntity) entity);
         this.level = inv.player.level();
         this.data = data;
 
@@ -31,10 +32,7 @@ public class MagicCrucibleBlockMenu extends AbstractContainerMenu {
         addPlayerHotbar(inv);
 
         this.blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent(iItemHandler -> {
-            this.addSlot(new SlotItemHandler(iItemHandler, 0, 50, 12));
-            this.addSlot(new SlotItemHandler(iItemHandler, 1, 110, 12));
-            this.addSlot(new SlotItemHandler(iItemHandler, 2, 80, 59));
-            this.addSlot(new SlotItemHandler(iItemHandler, 3, 26, 55));
+            this.addSlot(new SlotItemHandler(iItemHandler, 0, 80, 11));
         });
 
         addDataSlots(data);
@@ -68,7 +66,7 @@ public class MagicCrucibleBlockMenu extends AbstractContainerMenu {
     private static final int TE_INVENTORY_FIRST_SLOT_INDEX = VANILLA_FIRST_SLOT_INDEX + VANILLA_SLOT_COUNT;
 
     // THIS YOU HAVE TO DEFINE!
-    private static final int TE_INVENTORY_SLOT_COUNT = 4;  // must be the number of slots you have!
+    private static final int TE_INVENTORY_SLOT_COUNT = 1;  // must be the number of slots you have!
     @Override
     public ItemStack quickMoveStack(Player playerIn, int pIndex) {
         Slot sourceSlot = slots.get(pIndex);
@@ -105,7 +103,7 @@ public class MagicCrucibleBlockMenu extends AbstractContainerMenu {
     @Override
     public boolean stillValid(Player pPlayer) {
         return stillValid(ContainerLevelAccess.create(level, blockEntity.getBlockPos()),
-                pPlayer, ModBlocks.MAGIC_CRUCIBLE_BLOCK.get());
+                pPlayer, ModBlocks.PEDESTAL.get());
     }
 
     private void addPlayerInventory(Inventory playerInventory) {

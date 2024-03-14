@@ -16,6 +16,11 @@ public static final RegistryObject<BlockEntityType<MagicCrucibleBlockEntity>> MA
         BLOCK_ENTITIES.register("magic_crucible_block_be", ()->
                 BlockEntityType.Builder.of(MagicCrucibleBlockEntity::new, ModBlocks.MAGIC_CRUCIBLE_BLOCK.get()).build(null));
 
+    public static final RegistryObject<BlockEntityType<PedestalBlockEntity>> PEDESTAL_BE =
+            BLOCK_ENTITIES.register("pedestal_block_be", ()->
+                    BlockEntityType.Builder.of(PedestalBlockEntity::new, ModBlocks.PEDESTAL.get()).build(null));
+
+
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
     }
